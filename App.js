@@ -1,5 +1,5 @@
 import 'react-native-gesture-handler';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -58,11 +58,25 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [userWorkouts, setUserWorkouts] = useState(mockTreinos);
 
+  const handleDeleteWorkout = useCallback((dateToDelete) => {
+    console.log("Tentando excluir treino do dia:", dateToDelete);
+    
+    setUserWorkouts((prevWorkouts) => {
+      const updatedWorkouts = { ...prevWorkouts };
+      
+      if (updatedWorkouts[dateToDelete]) {
+        delete updatedWorkouts[dateToDelete];
+        console.log("Treino excluído com sucesso!");
+      }
+      
+      return updatedWorkouts;
+    });
+  }, []);
+
   useEffect(() => {
     const carregarDadosIniciais = async () => {
       try {
         const dadosApi = await fetchExercises();
-
         const agrupados = dadosApi.reduce((acc, ex) => {
           const grupo = ex.grupo || 'Outros';
           if (!acc[grupo]) acc[grupo] = [];
@@ -109,7 +123,14 @@ export default function App() {
             )}
           </Stack.Screen>
 
-          <Stack.Screen name="WorkoutDetail" component={WorkoutDetailScreen} />
+          <Stack.Screen
+            name="WorkoutDetail"
+            options={{ title: 'Detalhes do Treino' }}>
+            {(props) => (
+              <WorkoutDetailScreen {...props} onDelete={handleDeleteWorkout} />
+            )}
+          </Stack.Screen>
+
           <Stack.Screen name="ProgressionChart" component={ProgressionChartScreen} />
           <Stack.Screen 
             name="LogWorkout" 
