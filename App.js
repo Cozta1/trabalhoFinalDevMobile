@@ -1,90 +1,103 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
-import { fetchExercises } from './services/wger';
+import 'react-native-gesture-handler';
+import React, { useState, useEffect } from 'react';
+import { ActivityIndicator, View } from 'react-native';
+import { NavigationContainer, DarkTheme } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from './constants/colors';
 
+import HomeScreen from './screens/HomeScreen';
+import HistoryScreen from './screens/HistoryScreen';
+import ExerciseScreen from './screens/ExerciseScreen';
+import LogWorkoutScreen from './screens/LogWorkoutScreen';
+import WorkoutDetailScreen from './screens/WorkoutDetailScreen';
+import ProgressionChartScreen from './screens/ProgressionChartScreen';
+
+import { fetchExercises } from './services/wger';
+import { mockTreinos } from './data/mockTreinos';
+
+const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
+
+function TabNavigator({ exerciseList, userWorkouts }) {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName;
+          if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
+          else if (route.name === 'Histórico') iconName = focused ? 'bar-chart' : 'bar-chart-outline';
+          else if (route.name === 'Biblioteca') iconName = focused ? 'book' : 'book-outline';
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarStyle: {
+          backgroundColor: colors.card,
+          borderTopColor: colors.card,
+        },
+      })}>
+      <Tab.Screen name="Home">
+        {(props) => <HomeScreen {...props} userWorkouts={userWorkouts} />}
+      </Tab.Screen>
+      <Tab.Screen name="Histórico">
+        {(props) => <HistoryScreen {...props} userWorkouts={userWorkouts} />}
+      </Tab.Screen>
+      <Tab.Screen name="Biblioteca">
+        {(props) => <ExerciseScreen {...props} exerciseList={exerciseList} />}
+      </Tab.Screen>
+    </Tab.Navigator>
+  );
+}
+
 export default function App() {
-  const [exercicios, setExercicios] = useState([]);
+  const [exerciseList, setExerciseList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [userWorkouts, setUserWorkouts] = useState(mockTreinos);
 
   useEffect(() => {
-    async function carregarDados() {
-      const dados = await fetchExercises();
-      setExercicios(dados);
+    const carregarDadosIniciais = async () => {
+      const dadosApi = await fetchExercises();
+      setExerciseList(dadosApi);
       setLoading(false);
-    }
-    carregarDados();
+    };
+    carregarDadosIniciais();
   }, []);
 
   if (loading) {
     return (
-      <View style={styles.center}>
+      <View style={{ flex: 1, justifyContent: 'center', backgroundColor: colors.background }}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.text}>Testando conexão com WGER...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Teste de API (WGER)</Text>
-      <Text style={styles.subtitle}>Se você vê a lista abaixo, funcionou:</Text>
-      
-      <FlatList
-        data={exercicios}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <View style={styles.item}>
-            <Text style={styles.itemTitle}>{item.nome}</Text>
-            <Text style={styles.itemGroup}>{item.grupo}</Text>
-          </View>
-        )}
-      />
-    </View>
+    <SafeAreaProvider>
+      <NavigationContainer theme={DarkTheme}>
+        <Stack.Navigator>
+          <Stack.Screen name="Main" options={{ headerShown: false }}>
+            {(props) => (
+              <TabNavigator
+                {...props}
+                exerciseList={exerciseList}
+                userWorkouts={userWorkouts}
+              />
+            )}
+          </Stack.Screen>
+
+          <Stack.Screen name="WorkoutDetail" component={WorkoutDetailScreen} />
+          <Stack.Screen name="ProgressionChart" component={ProgressionChartScreen} />
+          <Stack.Screen 
+            name="LogWorkout" 
+            component={LogWorkoutScreen} 
+            options={{ presentation: 'modal', title: 'Registrar Treino' }}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    paddingTop: 50,
-    paddingHorizontal: 20,
-  },
-  center: {
-    flex: 1,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  text: {
-    color: colors.text,
-    marginTop: 10,
-  },
-  title: {
-    fontSize: 24,
-    color: colors.primary,
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 20,
-  },
-  item: {
-    backgroundColor: colors.card,
-    padding: 15,
-    marginBottom: 10,
-    borderRadius: 8,
-  },
-  itemTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  itemGroup: {
-    color: colors.textSecondary,
-    fontSize: 14,
-  },
-});
