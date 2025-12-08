@@ -60,9 +60,29 @@ export default function App() {
 
   useEffect(() => {
     const carregarDadosIniciais = async () => {
-      const dadosApi = await fetchExercises();
-      setExerciseList(dadosApi);
-      setLoading(false);
+      try {
+        const dadosApi = await fetchExercises();
+
+        const agrupados = dadosApi.reduce((acc, ex) => {
+          const grupo = ex.grupo || 'Outros';
+          if (!acc[grupo]) acc[grupo] = [];
+          acc[grupo].push(ex);
+          return acc;
+        }, {});
+
+        const listaAgrupada = Object.keys(agrupados)
+          .map((grupoNome) => ({
+            grupo: grupoNome,
+            exercicios: agrupados[grupoNome],
+          }))
+          .sort((a, b) => a.grupo.localeCompare(b.grupo));
+
+        setExerciseList(listaAgrupada);
+      } catch (error) {
+        console.error("Erro ao preparar dados:", error);
+      } finally {
+        setLoading(false);
+      }
     };
     carregarDadosIniciais();
   }, []);
