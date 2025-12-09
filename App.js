@@ -15,7 +15,7 @@ import LogWorkoutScreen from './screens/LogWorkoutScreen';
 import WorkoutDetailScreen from './screens/WorkoutDetailScreen';
 import ProgressionChartScreen from './screens/ProgressionChartScreen';
 
-import { fetchExercises } from './services/wger';
+import { fetchExercises } from './data/mockApiExercicios';
 import { mockTreinos } from './data/mockTreinos';
 
 const Tab = createBottomTabNavigator();

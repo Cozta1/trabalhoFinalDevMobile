@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   Modal,
   FlatList,
-  SafeAreaView,
+  Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../constants/colors';
@@ -25,10 +26,13 @@ export default function ExercicioFormCard({
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredExercises = useMemo(() => {
+    if (!exerciseListFlat) return [];
     if (!searchQuery) return exerciseListFlat;
-    return exerciseListFlat.filter((ex) =>
-      ex.nome.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    
+    return exerciseListFlat.filter((ex) => {
+      if (!ex || !ex.nome) return false;
+      return ex.nome.toLowerCase().includes(searchQuery.toLowerCase());
+    });
   }, [exerciseListFlat, searchQuery]);
 
   const handleSelect = (nome) => {
@@ -45,6 +49,7 @@ export default function ExercicioFormCard({
 
   return (
     <View style={styles.card}>
+      {/* HEADER DO CARD */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.selectorButton}
@@ -53,7 +58,8 @@ export default function ExercicioFormCard({
             style={[
               styles.selectorText,
               !exercicio.nome && styles.placeholderText,
-            ]}>
+            ]}
+            numberOfLines={1}>
             {exercicio.nome || 'Selecione ou pesquise...'}
           </Text>
           <Ionicons name="caret-down" size={16} color={colors.textSecondary} />
@@ -66,56 +72,75 @@ export default function ExercicioFormCard({
         </TouchableOpacity>
       </View>
 
+      {/* --- MODAL DE SELEÇÃO (CORRIGIDO PARA SCROLL) --- */}
       <Modal
         animationType="slide"
         transparent={true}
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}>
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <View style={styles.searchContainer}>
-                <Ionicons
-                  name="search"
-                  size={20}
-                  color={colors.textSecondary}
-                  style={{ marginRight: 8 }}
-                />
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Pesquisar exercício..."
-                  placeholderTextColor={colors.textSecondary}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  autoFocus={true}
-                />
-              </View>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Text style={styles.closeText}>Fechar</Text>
-              </TouchableOpacity>
-            </View>
-
-            <FlatList
-              data={filteredExercises}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.modalItem}
-                  onPress={() => handleSelect(item.nome)}>
-                  <Text style={styles.modalItemText}>{item.nome}</Text>
-                  <Text style={styles.modalItemSub}>{item.grupo}</Text>
+        
+        {/* Overlay Escuro */}
+        <View style={styles.modalOverlay}>
+          
+          {/* Conteúdo do Modal (Evitando Teclado) */}
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalKeyboardContainer}
+          >
+            <View style={styles.modalContent}>
+              {/* Header do Modal */}
+              <View style={styles.modalHeader}>
+                <View style={styles.searchContainer}>
+                  <Ionicons
+                    name="search"
+                    size={20}
+                    color={colors.textSecondary}
+                    style={{ marginRight: 8 }}
+                  />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Pesquisar..."
+                    placeholderTextColor={colors.textSecondary}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    autoFocus={true} 
+                  />
+                </View>
+                <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn}>
+                  <Text style={styles.closeText}>Fechar</Text>
                 </TouchableOpacity>
-              )}
-              ListEmptyComponent={
-                <Text style={styles.emptyListText}>
-                  Nenhum exercício encontrado.
-                </Text>
-              }
-            />
-          </View>
-        </SafeAreaView>
+              </View>
+
+              {/* LISTA SCROLLÁVEL */}
+              <FlatList
+                data={filteredExercises}
+                keyExtractor={(item) => item.id.toString()}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ paddingBottom: 20 }}
+                style={{ flex: 1 }} // Garante que a lista ocupe o espaço restante
+                initialNumToRender={15}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.modalItem}
+                    onPress={() => handleSelect(item.nome || 'Exercício')}>
+                    <Text style={styles.modalItemText}>
+                      {item.nome ? item.nome : 'Sem nome'}
+                    </Text>
+                    <Text style={styles.modalItemSub}>{item.grupo}</Text>
+                  </TouchableOpacity>
+                )}
+                ListEmptyComponent={
+                  <Text style={styles.emptyListText}>
+                    Nenhum exercício encontrado.
+                  </Text>
+                }
+              />
+            </View>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
 
+      {/* LINHAS DE SÉRIES */}
       <View style={styles.serieHeader}>
         <Text style={styles.headerText}>Série</Text>
         <Text style={styles.headerText}>Reps</Text>
@@ -143,7 +168,8 @@ export default function ExercicioFormCard({
             onChangeText={(text) => handleSerieChange(index, 'peso', text)}
           />
           <TouchableOpacity
-            onPress={() => onRemoveSerie(exercicio.id, serie.id)}>
+            onPress={() => onRemoveSerie(exercicio.id, serie.id)}
+            style={styles.removeBtn}>
             <Ionicons
               name="remove-circle-outline"
               size={24}
@@ -198,25 +224,34 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: 'normal',
   },
-  trashBtn: {
-    padding: 4,
-  },
-  modalContainer: {
+  trashBtn: { padding: 4 },
+  
+  // ESTILOS DO MODAL (CRUCIAIS PARA O SCROLL)
+  modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end', // Modal sobe do fundo
+  },
+  modalKeyboardContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
   },
   modalContent: {
-    flex: 1,
     backgroundColor: colors.background,
-    marginTop: 50,
+    height: '85%', // Altura fixa garante que o FlatList saiba onde parar
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
   },
   searchContainer: {
     flex: 1,
@@ -226,12 +261,16 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 10,
     marginRight: 10,
+    height: 45,
   },
   searchInput: {
     flex: 1,
     color: colors.text,
-    paddingVertical: 12,
     fontSize: 16,
+    height: '100%',
+  },
+  closeBtn: {
+    padding: 5,
   },
   closeText: {
     color: colors.primary,
@@ -256,6 +295,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
   },
+  // ESTILOS DAS SÉRIES
   serieHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -289,10 +329,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 16,
   },
-  removeIconPlaceholder: {
-    width: '25%',
-    alignItems: 'center',
-  },
+  removeIconPlaceholder: { width: '25%' },
+  removeBtn: { width: '25%', alignItems: 'center' },
   addSerieButton: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -101,6 +101,7 @@ export default function LogWorkoutScreen({
         <FlatList
           style={styles.container}
           data={exercicios}
+          contentContainerStyle={{ paddingBottom: 100 }}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={
             <View style={styles.headerTitle}>
