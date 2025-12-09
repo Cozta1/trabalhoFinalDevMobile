@@ -55,20 +55,31 @@ function TabNavigator({ exerciseList, userWorkouts }) {
 
 export default function App() {
   const [exerciseList, setExerciseList] = useState([]);
+  const [exerciseListFlat, setExerciseListFlat] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userWorkouts, setUserWorkouts] = useState(mockTreinos);
 
-  const handleDeleteWorkout = useCallback((dateToDelete) => {
-    console.log("Tentando excluir treino do dia:", dateToDelete);
+  const handleSaveWorkout = (newExercises) => {
+    const today = new Date().toISOString().split('T')[0]; 
     
     setUserWorkouts((prevWorkouts) => {
       const updatedWorkouts = { ...prevWorkouts };
       
+      if (updatedWorkouts[today]) {
+        updatedWorkouts[today] = [...updatedWorkouts[today], ...newExercises];
+      } else {
+        updatedWorkouts[today] = newExercises;
+      }
+      return updatedWorkouts;
+    });
+  };
+
+  const handleDeleteWorkout = useCallback((dateToDelete) => {
+    setUserWorkouts((prevWorkouts) => {
+      const updatedWorkouts = { ...prevWorkouts };
       if (updatedWorkouts[dateToDelete]) {
         delete updatedWorkouts[dateToDelete];
-        console.log("Treino excluído com sucesso!");
       }
-      
       return updatedWorkouts;
     });
   }, []);
@@ -77,6 +88,9 @@ export default function App() {
     const carregarDadosIniciais = async () => {
       try {
         const dadosApi = await fetchExercises();
+    
+        setExerciseListFlat(dadosApi);
+
         const agrupados = dadosApi.reduce((acc, ex) => {
           const grupo = ex.grupo || 'Outros';
           if (!acc[grupo]) acc[grupo] = [];
@@ -132,11 +146,21 @@ export default function App() {
           </Stack.Screen>
 
           <Stack.Screen name="ProgressionChart" component={ProgressionChartScreen} />
-          <Stack.Screen 
-            name="LogWorkout" 
-            component={LogWorkoutScreen} 
-            options={{ presentation: 'modal', title: 'Registrar Treino' }}
-          />
+
+          <Stack.Screen
+            name="LogWorkout"
+            options={{
+              title: 'Registrar Treino do Dia',
+              presentation: 'modal',
+            }}>
+            {(props) => (
+              <LogWorkoutScreen
+                {...props}
+                exerciseListFlat={exerciseListFlat}
+                onSave={handleSaveWorkout}
+              />
+            )}
+          </Stack.Screen>
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
