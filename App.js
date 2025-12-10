@@ -114,13 +114,19 @@ export default function App() {
     }
   };
 
-  const handleSaveWorkout = (newExercises, dateToSave) => {
+  const handleSaveWorkout = (newExercises, dateToSave, oldDate = null) => {
     const today = new Date().toISOString().split('T')[0];
     const targetDate = dateToSave || today;
     
     setUserWorkouts((prevWorkouts) => {
       const updatedWorkouts = { ...prevWorkouts };
+      
+      if (oldDate && oldDate !== targetDate) {
+        delete updatedWorkouts[oldDate];
+      }
+
       updatedWorkouts[targetDate] = newExercises;
+      
       persistWorkouts(updatedWorkouts);
       return updatedWorkouts;
     });

@@ -24,12 +24,39 @@ export default function LogWorkoutScreen({
   const { initialExercises, dateToEdit, isEditing } = route.params || {};
 
   const [exercicios, setExercicios] = useState([]);
+  
+  const [selectedDate, setSelectedDate] = useState(() => {
+    if (isEditing && dateToEdit) {
+      return new Date(dateToEdit + 'T00:00:00');
+    }
+    return new Date();
+  });
 
   useEffect(() => {
     if (isEditing && initialExercises) {
       setExercicios(JSON.parse(JSON.stringify(initialExercises)));
     }
   }, [isEditing, initialExercises]);
+
+  const changeDate = (days) => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(selectedDate.getDate() + days);
+    setSelectedDate(newDate);
+  };
+
+  const formatDateForDisplay = (date) => {
+    return date.toLocaleDateString('pt-BR', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    });
+  };
+
+  const formatDateForSave = (date) => {
+    const offset = date.getTimezoneOffset() * 60000;
+    const localDate = new Date(date.getTime() - offset);
+    return localDate.toISOString().split('T')[0];
+  };
 
   const handleAddExercicio = () => {
     const novoExercicio = {
@@ -88,9 +115,11 @@ export default function LogWorkoutScreen({
       return;
     }
 
-    onSave(exercicios, isEditing ? dateToEdit : null);
+    const dateToSave = formatDateForSave(selectedDate);
+    
+    onSave(exercicios, dateToSave, isEditing ? dateToEdit : null);
 
-    Alert.alert('Sucesso!', isEditing ? 'Treino atualizado!' : 'Treino salvo!');
+    Alert.alert('Sucesso!', `Treino salvo para o dia ${dateToSave.split('-').reverse().join('/')}!`);
     
     if (isEditing) {
         navigation.navigate('Main');
@@ -98,10 +127,6 @@ export default function LogWorkoutScreen({
         navigation.goBack();
     }
   };
-
-  const displayDate = isEditing 
-    ? new Date(dateToEdit + 'T00:00:00').toLocaleDateString('pt-BR') 
-    : new Date().toLocaleDateString('pt-BR');
 
   return (
     <KeyboardAvoidingView
@@ -114,13 +139,24 @@ export default function LogWorkoutScreen({
           data={exercicios}
           keyExtractor={(item) => item.id.toString()}
           ListHeaderComponent={
-            <View style={styles.headerTitle}>
-              <Text style={styles.title}>
-                {isEditing ? 'Editar Treino' : 'Registrar Treino'}
+            <View style={styles.headerContainer}>
+              <Text style={styles.label}>
+                {isEditing ? 'Editar Data do Treino:' : 'Selecione a Data:'}
               </Text>
-              <Text style={styles.dateText}>
-                Data: {displayDate}
-              </Text>
+              
+              <View style={styles.dateControl}>
+                <TouchableOpacity onPress={() => changeDate(-1)} style={styles.arrowBtn}>
+                  <Ionicons name="chevron-back" size={24} color={colors.primary} />
+                </TouchableOpacity>
+                
+                <Text style={styles.dateText}>
+                  {formatDateForDisplay(selectedDate)}
+                </Text>
+                
+                <TouchableOpacity onPress={() => changeDate(1)} style={styles.arrowBtn}>
+                  <Ionicons name="chevron-forward" size={24} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
             </View>
           }
           renderItem={({ item }) => (
@@ -169,19 +205,34 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
   },
-  headerTitle: {
+  headerContainer: {
     paddingVertical: 16,
     alignItems: 'center',
+    marginBottom: 10,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text,
+  label: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  dateControl: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
   dateText: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    marginTop: 4,
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginHorizontal: 20,
+    minWidth: 120,
+    textAlign: 'center',
+  },
+  arrowBtn: {
+    padding: 5,
   },
   addButton: {
     flexDirection: 'row',
