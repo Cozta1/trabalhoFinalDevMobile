@@ -214,7 +214,14 @@ export default function App() {
             )}
           </Stack.Screen>
 
-          <ProgressionChartScreen {...props} userWorkouts={userWorkouts} />
+          <Stack.Screen 
+            name="ProgressionChart" 
+            options={{ title: 'Progresso' }}
+          >
+            {(props) => (
+              <ProgressionChartScreen {...props} userWorkouts={userWorkouts} />
+            )}
+          </Stack.Screen>
 
           <Stack.Screen
             name="LogWorkout"
