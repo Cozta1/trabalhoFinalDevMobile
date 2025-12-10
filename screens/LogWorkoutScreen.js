@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,11 +16,20 @@ import { Ionicons } from '@expo/vector-icons';
 import ExercicioFormCard from '../components/ExercicioFormCard';
 
 export default function LogWorkoutScreen({
+  route,
   navigation,
   exerciseListFlat,
   onSave,
 }) {
+  const { initialExercises, dateToEdit, isEditing } = route.params || {};
+
   const [exercicios, setExercicios] = useState([]);
+
+  useEffect(() => {
+    if (isEditing && initialExercises) {
+      setExercicios(JSON.parse(JSON.stringify(initialExercises)));
+    }
+  }, [isEditing, initialExercises]);
 
   const handleAddExercicio = () => {
     const novoExercicio = {
@@ -30,12 +39,15 @@ export default function LogWorkoutScreen({
     };
     setExercicios((prev) => [...prev, novoExercicio]);
   };
+
   const handleRemoveExercicio = (id) =>
     setExercicios((prev) => prev.filter((ex) => ex.id !== id));
+
   const handleExercicioChange = (id, nome) =>
     setExercicios((prev) =>
       prev.map((ex) => (ex.id === id ? { ...ex, nome } : ex))
     );
+
   const handleAddSerie = (exercicioId) => {
     const novaSerie = { id: Date.now().toString(), reps: '', peso: '' };
     setExercicios((prev) =>
@@ -46,6 +58,7 @@ export default function LogWorkoutScreen({
       )
     );
   };
+
   const handleRemoveSerie = (exercicioId, serieId) => {
     setExercicios((prev) =>
       prev.map((ex) =>
@@ -55,6 +68,7 @@ export default function LogWorkoutScreen({
       )
     );
   };
+
   const handleSerieChange = (exercicioId, novasSeries) => {
     setExercicios((prev) =>
       prev.map((ex) =>
@@ -63,35 +77,31 @@ export default function LogWorkoutScreen({
     );
   };
 
-  const showAlert = (titulo, mensagem, onOk) => {
-    if (Platform.OS === 'web') {
-      window.alert(`${titulo}\n${mensagem}`);
-      if (onOk) onOk();
-    } else {
-      Alert.alert(titulo, mensagem, onOk ? [{ text: 'OK', onPress: onOk }] : undefined);
-    }
-  };
-
   const handleSalvarTreino = () => {
     const exerciciosInvalidos = exercicios.filter((ex) => !ex.nome);
-    
     if (exercicios.length === 0) {
-      showAlert('Erro', 'Adicione pelo menos um exercício para salvar.');
+      Alert.alert('Erro', 'Adicione pelo menos um exercício para salvar.');
       return;
     }
     if (exerciciosInvalidos.length > 0) {
-      showAlert('Erro', 'Selecione um nome para todos os exercícios.');
+      Alert.alert('Erro', 'Selecione um nome para todos os exercícios.');
       return;
     }
 
-    if (onSave) {
-      onSave(exercicios);
-      showAlert('Sucesso!', 'Treino salvo e atualizado!', () => navigation.goBack());
+    onSave(exercicios, isEditing ? dateToEdit : null);
+
+    Alert.alert('Sucesso!', isEditing ? 'Treino atualizado!' : 'Treino salvo!');
+    
+    if (isEditing) {
+        navigation.navigate('Main');
     } else {
-      console.error("ERRO CRÍTICO: Função 'onSave' não foi recebida. Verifique o App.js!");
-      showAlert('Erro Técnico', 'Não foi possível salvar (Função onSave ausente).');
+        navigation.goBack();
     }
   };
+
+  const displayDate = isEditing 
+    ? new Date(dateToEdit + 'T00:00:00').toLocaleDateString('pt-BR') 
+    : new Date().toLocaleDateString('pt-BR');
 
   return (
     <KeyboardAvoidingView
@@ -100,14 +110,16 @@ export default function LogWorkoutScreen({
       <SafeAreaView style={styles.safeContainer}>
         <FlatList
           style={styles.container}
-          data={exercicios}
           contentContainerStyle={{ paddingBottom: 100 }}
-          keyExtractor={(item) => item.id}
+          data={exercicios}
+          keyExtractor={(item) => item.id.toString()}
           ListHeaderComponent={
             <View style={styles.headerTitle}>
-              <Text style={styles.title}>Registrar Treino</Text>
+              <Text style={styles.title}>
+                {isEditing ? 'Editar Treino' : 'Registrar Treino'}
+              </Text>
               <Text style={styles.dateText}>
-                Data: {new Date().toLocaleDateString('pt-BR')}
+                Data: {displayDate}
               </Text>
             </View>
           }
@@ -138,7 +150,7 @@ export default function LogWorkoutScreen({
             color={colors.textSecondary}
           />
           <Button
-            title="Salvar Treino"
+            title={isEditing ? "Atualizar" : "Salvar"}
             onPress={handleSalvarTreino}
             color={colors.primary}
           />
@@ -159,6 +171,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     paddingVertical: 16,
+    alignItems: 'center',
   },
   title: {
     fontSize: 24,
@@ -168,6 +181,7 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 16,
     color: colors.textSecondary,
+    marginTop: 4,
   },
   addButton: {
     flexDirection: 'row',
@@ -190,5 +204,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderTopWidth: 1,
     borderTopColor: colors.card,
+    backgroundColor: colors.background,
   },
 });

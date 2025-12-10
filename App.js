@@ -1,4 +1,5 @@
 import 'react-native-gesture-handler';
+import 'react-native-reanimated';
 import React, { useState, useEffect, useCallback } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
@@ -6,6 +7,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from './constants/colors';
 
 import HomeScreen from './screens/HomeScreen';
@@ -21,7 +23,7 @@ import { mockTreinos } from './data/mockTreinos';
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-function TabNavigator({ exerciseList, userWorkouts }) {
+function TabNavigator({ exerciseList, exerciseLoading, userWorkouts }) {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -47,7 +49,13 @@ function TabNavigator({ exerciseList, userWorkouts }) {
         {(props) => <HistoryScreen {...props} userWorkouts={userWorkouts} />}
       </Tab.Screen>
       <Tab.Screen name="Biblioteca">
-        {(props) => <ExerciseScreen {...props} exerciseList={exerciseList} />}
+        {(props) => (
+          <ExerciseScreen
+            {...props}
+            exerciseList={exerciseList}
+            loading={exerciseLoading}
+          />
+        )}
       </Tab.Screen>
     </Tab.Navigator>
   );
@@ -56,20 +64,27 @@ function TabNavigator({ exerciseList, userWorkouts }) {
 export default function App() {
   const [exerciseList, setExerciseList] = useState([]);
   const [exerciseListFlat, setExerciseListFlat] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [userWorkouts, setUserWorkouts] = useState(mockTreinos);
+  const [appLoading, setAppLoading] = useState(true);
+  const [userWorkouts, setUserWorkouts] = useState({});
 
-  const handleSaveWorkout = (newExercises) => {
-    const today = new Date().toISOString().split('T')[0]; 
+  const persistWorkouts = async (workouts) => {
+    try {
+      const jsonValue = JSON.stringify(workouts);
+      await AsyncStorage.setItem('@my_app_treinos', jsonValue);
+    } catch (e) {
+      console.error("Erro ao salvar dados", e);
+    }
+  };
+
+  const handleSaveWorkout = (newExercises, dateToSave) => {
+    const today = new Date().toISOString().split('T')[0];
+    const targetDate = dateToSave || today;
     
     setUserWorkouts((prevWorkouts) => {
       const updatedWorkouts = { ...prevWorkouts };
+      updatedWorkouts[targetDate] = newExercises;
       
-      if (updatedWorkouts[today]) {
-        updatedWorkouts[today] = [...updatedWorkouts[today], ...newExercises];
-      } else {
-        updatedWorkouts[today] = newExercises;
-      }
+      persistWorkouts(updatedWorkouts);
       return updatedWorkouts;
     });
   };
@@ -79,6 +94,7 @@ export default function App() {
       const updatedWorkouts = { ...prevWorkouts };
       if (updatedWorkouts[dateToDelete]) {
         delete updatedWorkouts[dateToDelete];
+        persistWorkouts(updatedWorkouts);
       }
       return updatedWorkouts;
     });
@@ -88,7 +104,6 @@ export default function App() {
     const carregarDadosIniciais = async () => {
       try {
         const dadosApi = await fetchExercises();
-    
         setExerciseListFlat(dadosApi);
 
         const agrupados = dadosApi.reduce((acc, ex) => {
@@ -106,16 +121,25 @@ export default function App() {
           .sort((a, b) => a.grupo.localeCompare(b.grupo));
 
         setExerciseList(listaAgrupada);
+
+        const jsonValue = await AsyncStorage.getItem('@my_app_treinos');
+        if (jsonValue != null) {
+          setUserWorkouts(JSON.parse(jsonValue));
+        } else {
+          setUserWorkouts(mockTreinos);
+        }
+
       } catch (error) {
-        console.error("Erro ao preparar dados:", error);
+        console.error("Erro no carregamento inicial:", error);
       } finally {
-        setLoading(false);
+        setAppLoading(false);
       }
     };
+
     carregarDadosIniciais();
   }, []);
 
-  if (loading) {
+  if (appLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', backgroundColor: colors.background }}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -132,6 +156,7 @@ export default function App() {
               <TabNavigator
                 {...props}
                 exerciseList={exerciseList}
+                exerciseLoading={false} 
                 userWorkouts={userWorkouts}
               />
             )}
@@ -150,7 +175,7 @@ export default function App() {
           <Stack.Screen
             name="LogWorkout"
             options={{
-              title: 'Registrar Treino do Dia',
+              title: 'Registrar/Editar Treino',
               presentation: 'modal',
             }}>
             {(props) => (

@@ -49,7 +49,6 @@ export default function ExercicioFormCard({
 
   return (
     <View style={styles.card}>
-      {/* HEADER DO CARD */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.selectorButton}
@@ -72,23 +71,18 @@ export default function ExercicioFormCard({
         </TouchableOpacity>
       </View>
 
-      {/* --- MODAL DE SELEÇÃO (CORRIGIDO PARA SCROLL) --- */}
       <Modal
         animationType="slide"
         transparent={true}
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}>
         
-        {/* Overlay Escuro */}
         <View style={styles.modalOverlay}>
-          
-          {/* Conteúdo do Modal (Evitando Teclado) */}
           <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.modalKeyboardContainer}
           >
             <View style={styles.modalContent}>
-              {/* Header do Modal */}
               <View style={styles.modalHeader}>
                 <View style={styles.searchContainer}>
                   <Ionicons
@@ -111,13 +105,12 @@ export default function ExercicioFormCard({
                 </TouchableOpacity>
               </View>
 
-              {/* LISTA SCROLLÁVEL */}
               <FlatList
                 data={filteredExercises}
                 keyExtractor={(item) => item.id.toString()}
                 keyboardShouldPersistTaps="handled"
                 contentContainerStyle={{ paddingBottom: 20 }}
-                style={{ flex: 1 }} // Garante que a lista ocupe o espaço restante
+                style={{ flex: 1 }} 
                 initialNumToRender={15}
                 renderItem={({ item }) => (
                   <TouchableOpacity
@@ -140,7 +133,6 @@ export default function ExercicioFormCard({
         </View>
       </Modal>
 
-      {/* LINHAS DE SÉRIES */}
       <View style={styles.serieHeader}>
         <Text style={styles.headerText}>Série</Text>
         <Text style={styles.headerText}>Reps</Text>
@@ -226,11 +218,10 @@ const styles = StyleSheet.create({
   },
   trashBtn: { padding: 4 },
   
-  // ESTILOS DO MODAL (CRUCIAIS PARA O SCROLL)
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'flex-end', // Modal sobe do fundo
+    justifyContent: 'flex-end',
   },
   modalKeyboardContainer: {
     flex: 1,
@@ -238,7 +229,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: colors.background,
-    height: '85%', // Altura fixa garante que o FlatList saiba onde parar
+    height: '85%',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 16,
@@ -295,7 +286,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
   },
-  // ESTILOS DAS SÉRIES
   serieHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

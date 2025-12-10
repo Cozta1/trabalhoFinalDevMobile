@@ -6,14 +6,12 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
-  Platform, // Importante para verificar se é Web ou Mobile
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 
 const formatarDataHeader = (dataStr) => {
-  if (!dataStr) return '';
   const data = new Date(dataStr + 'T00:00:00');
   const options = { day: 'numeric', month: 'long', year: 'numeric' };
   return new Intl.DateTimeFormat('pt-BR', options).format(data);
@@ -23,57 +21,51 @@ export default function WorkoutDetailScreen({ route, navigation, onDelete }) {
   const { date, exercicios } = route.params;
 
   useLayoutEffect(() => {
-    const executarExclusao = () => {
-      if (onDelete) {
-        console.log('Excluindo treino de:', date);
-        onDelete(date);
-        navigation.goBack();
-      } else {
-        console.error('ERRO: Função onDelete não foi recebida!');
-      }
+    const handlePressDelete = () => {
+      Alert.alert(
+        'Excluir Treino',
+        'Tem certeza que deseja apagar todo o treino deste dia?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Excluir',
+            style: 'destructive',
+            onPress: () => {
+              if (onDelete) {
+                onDelete(date);
+                navigation.goBack();
+              }
+            },
+          },
+        ]
+      );
     };
 
-    const handlePressDelete = () => {
-      // Lógica específica para WEB (Navegador)
-      if (Platform.OS === 'web') {
-        const confirmado = window.confirm(
-          'Tem certeza que deseja apagar todo o treino deste dia?'
-        );
-        if (confirmado) {
-          executarExclusao();
-        }
-      } 
-      // Lógica para MOBILE (Android/iOS)
-      else {
-        Alert.alert(
-          'Excluir Treino',
-          'Tem certeza que deseja apagar todo o treino deste dia?',
-          [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-              text: 'Excluir',
-              style: 'destructive',
-              onPress: executarExclusao,
-            },
-          ]
-        );
-      }
+    const handlePressEdit = () => {
+      navigation.navigate('LogWorkout', {
+        initialExercises: exercicios,
+        dateToEdit: date,
+        isEditing: true,
+      });
     };
 
     if (date) {
       navigation.setOptions({
         title: `Treino de ${formatarDataHeader(date)}`,
         headerRight: () => (
-          <TouchableOpacity
-            onPress={handlePressDelete}
-            style={{ marginRight: 15, padding: 5 }}> 
-            {/* Adicionei padding para facilitar o toque */}
-            <Ionicons name="trash-outline" size={24} color={colors.error} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', marginRight: 15 }}>
+            <TouchableOpacity onPress={handlePressEdit} style={{ marginRight: 20 }}>
+              <Ionicons name="pencil" size={24} color={colors.primary} />
+            </TouchableOpacity>
+            
+            <TouchableOpacity onPress={handlePressDelete}>
+              <Ionicons name="trash-outline" size={24} color={colors.error} />
+            </TouchableOpacity>
+          </View>
         ),
       });
     }
-  }, [navigation, date, onDelete]);
+  }, [navigation, date, onDelete, exercicios]);
 
   const renderExercicio = ({ item: exercicio }) => (
     <View style={styles.card}>
@@ -95,7 +87,7 @@ export default function WorkoutDetailScreen({ route, navigation, onDelete }) {
         data={exercicios}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderExercicio}
-        ListFooterComponent={<View style={{ height: 20 }} />}
+        contentContainerStyle={{ paddingBottom: 20 }}
       />
     </SafeAreaView>
   );
