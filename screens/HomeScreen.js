@@ -25,7 +25,7 @@ LocaleConfig.locales['pt-br'] = {
 };
 LocaleConfig.defaultLocale = 'pt-br';
 
-export default function HomeScreen({ navigation, userWorkouts }) {
+export default function HomeScreen({ navigation, userWorkouts, userName }) {
   const [citacao, setCitacao] = useState(null);
   const [loadingQuote, setLoadingQuote] = useState(true);
 
@@ -105,7 +105,9 @@ export default function HomeScreen({ navigation, userWorkouts }) {
       <ScrollView style={styles.container}>
         
         <View style={styles.headerRow}>
-            <Text style={styles.title}>Home</Text>
+            <Text style={styles.title} numberOfLines={1}>
+              Olá, {userName || 'Atleta'}
+            </Text>
             <WeatherWidget />
         </View>
 

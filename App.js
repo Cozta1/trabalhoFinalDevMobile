@@ -16,6 +16,7 @@ import ExerciseScreen from './screens/ExerciseScreen';
 import LogWorkoutScreen from './screens/LogWorkoutScreen';
 import WorkoutDetailScreen from './screens/WorkoutDetailScreen';
 import ProgressionChartScreen from './screens/ProgressionChartScreen';
+import ProfileScreen from './screens/ProfileScreen';
 
 import { fetchExercises } from './data/mockApiExercicios';
 import { mockTreinos } from './data/mockTreinos';
@@ -23,7 +24,7 @@ import { mockTreinos } from './data/mockTreinos';
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-function TabNavigator({ exerciseList, exerciseLoading, userWorkouts }) {
+function TabNavigator({ exerciseList, userWorkouts, userName, onSaveName, onResetData }) {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -33,6 +34,7 @@ function TabNavigator({ exerciseList, exerciseLoading, userWorkouts }) {
           if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
           else if (route.name === 'Histórico') iconName = focused ? 'bar-chart' : 'bar-chart-outline';
           else if (route.name === 'Biblioteca') iconName = focused ? 'book' : 'book-outline';
+          else if (route.name === 'Perfil') iconName = focused ? 'person' : 'person-outline';
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: colors.primary,
@@ -42,21 +44,36 @@ function TabNavigator({ exerciseList, exerciseLoading, userWorkouts }) {
           borderTopColor: colors.card,
         },
       })}>
+      
       <Tab.Screen name="Home">
-        {(props) => <HomeScreen {...props} userWorkouts={userWorkouts} />}
+        {(props) => <HomeScreen {...props} userWorkouts={userWorkouts} userName={userName} />}
       </Tab.Screen>
+      
       <Tab.Screen name="Histórico">
         {(props) => <HistoryScreen {...props} userWorkouts={userWorkouts} />}
       </Tab.Screen>
+      
       <Tab.Screen name="Biblioteca">
         {(props) => (
           <ExerciseScreen
             {...props}
             exerciseList={exerciseList}
-            loading={exerciseLoading}
+            loading={false}
           />
         )}
       </Tab.Screen>
+
+      <Tab.Screen name="Perfil">
+        {(props) => (
+          <ProfileScreen 
+            {...props} 
+            userName={userName} 
+            onSaveName={onSaveName} 
+            onResetData={onResetData} 
+          />
+        )}
+      </Tab.Screen>
+
     </Tab.Navigator>
   );
 }
@@ -66,6 +83,7 @@ export default function App() {
   const [exerciseListFlat, setExerciseListFlat] = useState([]);
   const [appLoading, setAppLoading] = useState(true);
   const [userWorkouts, setUserWorkouts] = useState({});
+  const [userName, setUserName] = useState('');
 
   const persistWorkouts = async (workouts) => {
     try {
@@ -76,6 +94,26 @@ export default function App() {
     }
   };
 
+  const handleSaveName = async (name) => {
+    try {
+      setUserName(name);
+      await AsyncStorage.setItem('@my_app_username', name);
+    } catch (e) {
+      console.error("Erro ao salvar nome", e);
+    }
+  };
+
+  const handleResetData = async () => {
+    try {
+      await AsyncStorage.clear();
+      setUserWorkouts({});
+      setUserName('');
+      alert('App resetado com sucesso!');
+    } catch (e) {
+      console.error("Erro ao resetar", e);
+    }
+  };
+
   const handleSaveWorkout = (newExercises, dateToSave) => {
     const today = new Date().toISOString().split('T')[0];
     const targetDate = dateToSave || today;
@@ -83,7 +121,6 @@ export default function App() {
     setUserWorkouts((prevWorkouts) => {
       const updatedWorkouts = { ...prevWorkouts };
       updatedWorkouts[targetDate] = newExercises;
-      
       persistWorkouts(updatedWorkouts);
       return updatedWorkouts;
     });
@@ -122,11 +159,16 @@ export default function App() {
 
         setExerciseList(listaAgrupada);
 
-        const jsonValue = await AsyncStorage.getItem('@my_app_treinos');
-        if (jsonValue != null) {
-          setUserWorkouts(JSON.parse(jsonValue));
+        const jsonWorkouts = await AsyncStorage.getItem('@my_app_treinos');
+        if (jsonWorkouts != null) {
+          setUserWorkouts(JSON.parse(jsonWorkouts));
         } else {
           setUserWorkouts(mockTreinos);
+        }
+
+        const storedName = await AsyncStorage.getItem('@my_app_username');
+        if (storedName) {
+          setUserName(storedName);
         }
 
       } catch (error) {
@@ -156,8 +198,10 @@ export default function App() {
               <TabNavigator
                 {...props}
                 exerciseList={exerciseList}
-                exerciseLoading={false} 
                 userWorkouts={userWorkouts}
+                userName={userName}
+                onSaveName={handleSaveName}
+                onResetData={handleResetData}
               />
             )}
           </Stack.Screen>
@@ -170,7 +214,7 @@ export default function App() {
             )}
           </Stack.Screen>
 
-          <Stack.Screen name="ProgressionChart" component={ProgressionChartScreen} />
+          <ProgressionChartScreen {...props} userWorkouts={userWorkouts} />
 
           <Stack.Screen
             name="LogWorkout"
