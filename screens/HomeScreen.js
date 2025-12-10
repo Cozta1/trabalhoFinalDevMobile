@@ -12,6 +12,10 @@ import { colors } from '../constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 
+import WeatherWidget from '../components/WeatherWidget';
+
+const QUOTES_API_URL = 'https://raw.githubusercontent.com/devmatheusguerra/frasesJSON/master/frases.json';
+
 LocaleConfig.locales['pt-br'] = {
   monthNames: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'],
   monthNamesShort: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
@@ -21,22 +25,29 @@ LocaleConfig.locales['pt-br'] = {
 };
 LocaleConfig.defaultLocale = 'pt-br';
 
-const API_URL = 'https://dummyjson.com/quotes/random';
-
 export default function HomeScreen({ navigation, userWorkouts }) {
   const [citacao, setCitacao] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loadingQuote, setLoadingQuote] = useState(true);
 
   useEffect(() => {
     const fetchCitacao = async () => {
       try {
-        const response = await fetch(API_URL);
+        setLoadingQuote(true);
+        const response = await fetch(QUOTES_API_URL);
         const data = await response.json();
-        setCitacao({ texto: data.quote, autor: data.author });
+        
+        if (data && data.length > 0) {
+          const randomIndex = Math.floor(Math.random() * data.length);
+          const item = data[randomIndex];
+          setCitacao({ texto: item.frase, autor: item.autor });
+        }
       } catch (err) {
-        setCitacao(null);
+        setCitacao({ 
+          texto: "O único treino ruim é aquele que não aconteceu.", 
+          autor: "Desconhecido" 
+        });
       } finally {
-        setLoading(false);
+        setLoadingQuote(false);
       }
     };
     fetchCitacao();
@@ -53,8 +64,31 @@ export default function HomeScreen({ navigation, userWorkouts }) {
   }, [userWorkouts]);
 
   const stats = useMemo(() => {
-    const totalTreinos = userWorkouts ? Object.keys(userWorkouts).length : 0;
-    return { totalTreinos };
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+    
+    const totalDaysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+    const datasComTreino = userWorkouts ? Object.keys(userWorkouts) : [];
+    let daysTrainedThisMonth = 0;
+
+    datasComTreino.forEach((dateStr) => {
+      const [year, month] = dateStr.split('-');
+      if (parseInt(year) === currentYear && parseInt(month) - 1 === currentMonth) {
+        daysTrainedThisMonth++;
+      }
+    });
+
+    const percentage = totalDaysInMonth > 0 
+      ? Math.round((daysTrainedThisMonth / totalDaysInMonth) * 100) 
+      : 0;
+
+    return { 
+      daysTrained: daysTrainedThisMonth, 
+      percentage,
+      monthName: LocaleConfig.locales['pt-br'].monthNames[currentMonth]
+    };
   }, [userWorkouts]);
 
   const handleDayPress = (day) => {
@@ -69,11 +103,15 @@ export default function HomeScreen({ navigation, userWorkouts }) {
   return (
     <SafeAreaView style={styles.safeContainer}>
       <ScrollView style={styles.container}>
-        <Text style={styles.title}>Home</Text>
+        
+        <View style={styles.headerRow}>
+            <Text style={styles.title}>Home</Text>
+            <WeatherWidget />
+        </View>
 
         <Text style={styles.subtitle}>Motivação do Dia</Text>
-        {loading ? (
-          <ActivityIndicator color={colors.primary} />
+        {loadingQuote ? (
+          <ActivityIndicator color={colors.primary} style={{ marginVertical: 20 }} />
         ) : citacao ? (
           <View style={styles.card}>
             <Text style={styles.quoteText}>"{citacao.texto}"</Text>
@@ -81,11 +119,19 @@ export default function HomeScreen({ navigation, userWorkouts }) {
           </View>
         ) : null}
 
-        <Text style={styles.subtitle}>Seu Progresso</Text>
+        <View style={styles.sectionHeader}>
+            <Text style={styles.subtitle}>Seu Progresso</Text>
+            <Text style={styles.monthLabel}>{stats.monthName}</Text>
+        </View>
+      
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.totalTreinos}</Text>
-            <Text style={styles.statLabel}>Treinos Totais</Text>
+            <Text style={styles.statValue}>{stats.daysTrained}</Text>
+            <Text style={styles.statLabel}>Dias Treinados</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{stats.percentage}%</Text>
+            <Text style={styles.statLabel}>Frequência</Text>
           </View>
         </View>
 
@@ -134,19 +180,37 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 10,
+  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     color: colors.text,
-    marginBottom: 10,
-    paddingTop: 16,
   },
   subtitle: {
     fontSize: 18,
     fontWeight: '600',
     color: colors.textSecondary,
+    marginBottom: 10,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
     marginTop: 20,
     marginBottom: 10,
+  },
+  monthLabel: {
+    fontSize: 14,
+    color: colors.primary,
+    marginBottom: 12,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
   },
   card: {
     backgroundColor: colors.card,
@@ -169,6 +233,7 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 10,
   },
   statCard: {
@@ -177,7 +242,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
-    marginRight: 10,
+    marginHorizontal: 5,
   },
   statValue: {
     fontSize: 28,
@@ -185,9 +250,10 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   statLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: colors.textSecondary,
     marginTop: 4,
+    textTransform: 'uppercase',
   },
   calendar: {
     borderRadius: 8,
