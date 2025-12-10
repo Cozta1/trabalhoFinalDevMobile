@@ -51,7 +51,7 @@ export default function WorkoutDetailScreen({ route, navigation, onDelete }) {
 
     if (date) {
       navigation.setOptions({
-        title: `Treino de ${formatarDataHeader(date)}`,
+        title: `${formatarDataHeader(date)}`,
         headerRight: () => (
           <View style={{ flexDirection: 'row', marginRight: 15 }}>
             <TouchableOpacity onPress={handlePressEdit} style={{ marginRight: 20 }}>
